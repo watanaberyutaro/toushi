@@ -1,0 +1,80 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+* {
+  box-sizing: border-box;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background-color: #0B0E13;
+  color: #D1D4DC;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  overflow: hidden;
+  height: 100%;
+  /* iOS safe area support */
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+html {
+  height: -webkit-fill-available;
+}
+
+#__next, main {
+  height: 100%;
+  overflow: hidden;
+}
+
+::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+
+::-webkit-scrollbar-track {
+  background: #131720;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #2A3040;
+  border-radius: 2px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #374151;
+}
+
+.chat-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: #2A3040 #131720;
+}
+
+/* TradingView chart dark theme overrides */
+.tv-lightweight-charts {
+  background-color: #131720 !important;
+}
+
+/* Pulse animation for live indicator */
+@keyframes pulse-green {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+.live-dot {
+  animation: pulse-green 1.5s ease-in-out infinite;
+}
+
+/* Message streaming cursor */
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+.cursor-blink::after {
+  content: '▊';
+  animation: blink 0.7s ease-in-out infinite;
+  color: #2962FF;
+}

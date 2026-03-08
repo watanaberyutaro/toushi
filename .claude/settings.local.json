@@ -1,0 +1,25 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm install:*)",
+      "Bash(npx tsc:*)",
+      "Bash(node:*)",
+      "Bash(npm run:*)",
+      "Bash(lsof:*)",
+      "Bash(ps:*)",
+      "Bash(do:*)",
+      "Bash(curl:*)",
+      "Bash(pkill:*)",
+      "Bash(# Test SEC EDGAR submissions API for Berkshire\ncurl -s \"https://data.sec.gov/submissions/CIK0001067983.json\" \\\\\n  -H \"User-Agent: AI-Trading-Assistant contact@example.com\" | \\\\\n  python3 -c \"\nimport json, sys\nd = json.load\\(sys.stdin\\)\ntypes = d['filings']['recent']['form']\naccs = d['filings']['recent']['accessionNumber']\ndates = d['filings']['recent']['reportDate']\ndocs = d['filings']['recent']['primaryDocument']\nfor i,\\(t,a,dt,doc\\) in enumerate\\(zip\\(types,accs,dates,docs\\)\\):\n    if '13F' in t:\n        print\\(f'idx={i} type={t} acc={a} date={dt} doc={doc}'\\)\n        break\n\" 2>&1)",
+      "Bash(# Test the filing index\nACC=\"0001193125-26-054580\"\nACC_NO_DASHES=\"${ACC//-/}\"\nCIK=\"1067983\"\ncurl -s \"https://www.sec.gov/Archives/edgar/data/${CIK}/${ACC_NO_DASHES}/index.json\" \\\\\n  -H \"User-Agent: AI-Trading-Assistant contact@example.com\" | \\\\\n  python3 -c \"\nimport json, sys\nd = json.load\\(sys.stdin\\)\nitems = d['directory']['item']\nfor item in items:\n    print\\(item['name'], item.get\\('type',''\\)\\)\n\" 2>&1)",
+      "Bash(# Check the raw index.json structure \ncurl -s \"https://www.sec.gov/Archives/edgar/data/1067983/000119312526054580/index.json\" \\\\\n  -H \"User-Agent: AI-Trading-Assistant contact@example.com\" | \\\\\n  python3 -c \"\nimport json, sys\nd = json.load\\(sys.stdin\\)\nitems = d['directory']['item']\nfor item in items:\n    print\\(json.dumps\\(item\\)\\)\n\" 2>&1)",
+      "Bash(source:*)",
+      "Bash(nodebrew ls:*)",
+      "Bash(npx next:*)",
+      "Bash(cp:*)",
+      "Bash(\\\\cp:*)",
+      "Bash(time curl:*)",
+      "Bash(git:*)"
+    ]
+  }
+}

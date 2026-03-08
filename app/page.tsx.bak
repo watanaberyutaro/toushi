@@ -1,0 +1,255 @@
+"use client";
+
+import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+import WatchlistPanel from "@/components/Watchlist/WatchlistPanel";
+import MiniWatchlist from "@/components/Watchlist/MiniWatchlist";
+import ChartContainer from "@/components/Chart/ChartContainer";
+import ChatPanel from "@/components/Chat/ChatPanel";
+import AlertsList from "@/components/Alerts/AlertsList";
+import AddSymbolModal from "@/components/Watchlist/AddSymbolModal";
+import PortfolioPanel from "@/components/Portfolio/PortfolioPanel";
+import InstitutionalPanel from "@/components/Institutional/InstitutionalPanel";
+import { usePortfolioSync } from "@/hooks/usePortfolioSync";
+import { useAppStore } from "@/stores/useAppStore";
+import { DEFAULT_WATCHLIST } from "@/lib/mock-data";
+import {
+  LogOut, User, LineChart, MessageSquare, Briefcase, Building2,
+  ChevronDown, ChevronRight,
+} from "lucide-react";
+
+type RightPanel = "chat" | "portfolio" | "institutional" | null;
+type MobileTab = "chart" | "chat" | "portfolio" | "institutional";
+
+interface AuthUser { id: string; name: string; email: string; }
+
+export default function TradingDashboard() {
+  const { watchlist, setWatchlist, setSelectedSymbol, showAlerts, showAddSymbol, setUsdJpyRate } =
+    useAppStore();
+  const initialized = useRef(false);
+  const [openPanel, setOpenPanel] = useState<RightPanel>("chat");
+  const [mobileTab, setMobileTab] = useState<MobileTab>("chart");
+  const [authUser, setAuthUser] = useState<AuthUser | null>(null);
+  const router = useRouter();
+  usePortfolioSync();
+
+  useEffect(() => {
+    if (initialized.current) return;
+    initialized.current = true;
+
+    const initWatchlist = () => {
+      const current = useAppStore.getState().watchlist;
+      if (current.length > 0) {
+        setSelectedSymbol({
+          id: current[0].id, symbol: current[0].symbol,
+          name: current[0].name, type: current[0].type,
+        });
+      } else {
+        setWatchlist(DEFAULT_WATCHLIST);
+        setSelectedSymbol({
+          id: DEFAULT_WATCHLIST[0].id, symbol: DEFAULT_WATCHLIST[0].symbol,
+          name: DEFAULT_WATCHLIST[0].name, type: DEFAULT_WATCHLIST[0].type,
+        });
+      }
+    };
+    initWatchlist();
+
+    const rateTimer = setTimeout(async () => {
+      try {
+        const res = await fetch("/api/market-data/realtime?symbol=USD%2FJPY");
+        if (res.ok) {
+          const data = await res.json();
+          if (data.price) setUsdJpyRate(data.price);
+        }
+      } catch {}
+    }, 2000);
+    return () => clearTimeout(rateTimer);
+  }, [setWatchlist, setSelectedSymbol, setUsdJpyRate]);
+
+  useEffect(() => {
+    fetch("/api/auth/me")
+      .then((r) => r.json())
+      .then((d) => { if (d.user) setAuthUser(d.user); })
+      .catch(() => {});
+  }, []);
+
+  const handleLogout = async () => {
+    await fetch("/api/auth/logout", { method: "POST" });
+    router.push("/login");
+  };
+
+  const togglePanel = (panel: Exclude<RightPanel, null>) => {
+    setOpenPanel((prev) => (prev === panel ? null : panel));
+  };
+
+  // 右パネルのアコーディオンセクション定義
+  const RIGHT_SECTIONS: {
+    key: Exclude<RightPanel, null>;
+    label: string;
+    icon: React.ReactNode;
+    accent: string;
+    content: React.ReactNode;
+  }[] = [
+    {
+      key: "chat",
+      label: "AI チャット",
+      icon: <MessageSquare size={13} />,
+      accent: "text-accent-blue",
+      content: <ChatPanel />,
+    },
+    {
+      key: "portfolio",
+      label: "ポートフォリオ",
+      icon: <Briefcase size={13} />,
+      accent: "text-accent-green",
+      content: <PortfolioPanel />,
+    },
+    {
+      key: "institutional",
+      label: "機関投資家",
+      icon: <Building2 size={13} />,
+      accent: "text-accent-purple",
+      content: <InstitutionalPanel />,
+    },
+  ];
+
+  const MOBILE_TABS: { key: MobileTab; label: string; icon: React.ReactNode }[] = [
+    { key: "chart",         label: "チャート", icon: <LineChart size={18} /> },
+    { key: "chat",          label: "AI",       icon: <MessageSquare size={18} /> },
+    { key: "portfolio",     label: "資産",     icon: <Briefcase size={18} /> },
+    { key: "institutional", label: "機関",     icon: <Building2 size={18} /> },
+  ];
+
+  return (
+    <div className="flex flex-col h-screen h-dvh w-screen overflow-hidden bg-bg-primary">
+
+      {/* ── トップバー ─────────────────────────────── */}
+      <div className="flex items-center justify-between px-3 py-1.5 bg-bg-secondary border-b border-border flex-none">
+        <span className="text-xs font-semibold text-text-muted tracking-widest uppercase">
+          AI Trading
+        </span>
+        {authUser && (
+          <div className="flex items-center gap-2">
+            <div className="hidden sm:flex items-center gap-1.5 text-xs text-text-secondary">
+              <User size={12} className="text-text-muted" />
+              <span>{authUser.name}</span>
+            </div>
+            <button
+              onClick={handleLogout}
+              className="flex items-center gap-1 text-xs text-text-muted hover:text-accent-red transition-colors"
+              title="ログアウト"
+            >
+              <LogOut size={12} />
+              <span className="hidden sm:inline">ログアウト</span>
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* ══════════════ デスクトップレイアウト (md+) ══════════════ */}
+      <div className="hidden md:flex flex-1 overflow-hidden">
+
+        {/* ── 左サイドバー: ウォッチリスト ── */}
+        <div className="flex-none w-52 border-r border-border overflow-hidden flex flex-col bg-bg-secondary">
+          <WatchlistPanel />
+        </div>
+
+        {/* ── 中央: チャート (上) + ミニウォッチリスト (下) ── */}
+        <div className="flex-1 flex flex-col overflow-hidden min-w-0">
+          {/* チャートエリア (65%) */}
+          <div className="flex-[13] min-h-0 overflow-hidden">
+            <ChartContainer />
+          </div>
+
+          {/* ミニウォッチリスト (35%) */}
+          <div className="flex-[7] min-h-0 overflow-hidden border-t border-border">
+            <MiniWatchlist />
+          </div>
+        </div>
+
+        {/* ── 右パネル: 開閉可能アコーディオン ── */}
+        <div
+          className="flex-none flex flex-col border-l border-border bg-bg-secondary overflow-hidden transition-all duration-200"
+          style={{ width: openPanel ? "300px" : "160px" }}
+        >
+          {RIGHT_SECTIONS.map((section) => {
+            const isOpen = openPanel === section.key;
+            return (
+              <div
+                key={section.key}
+                className={`flex flex-col border-b border-border ${isOpen ? "flex-1 min-h-0" : "flex-none"}`}
+              >
+                {/* セクションヘッダー */}
+                <button
+                  onClick={() => togglePanel(section.key)}
+                  className={`flex items-center justify-between px-3 py-2.5 hover:bg-bg-hover transition-colors w-full text-left flex-none ${
+                    isOpen ? "bg-bg-hover" : ""
+                  }`}
+                >
+                  <div className={`flex items-center gap-2 ${isOpen ? section.accent : "text-text-muted"}`}>
+                    {section.icon}
+                    <span className="text-xs font-semibold">{section.label}</span>
+                  </div>
+                  {isOpen ? (
+                    <ChevronDown size={13} className="text-text-muted flex-none" />
+                  ) : (
+                    <ChevronRight size={13} className="text-text-muted flex-none" />
+                  )}
+                </button>
+
+                {/* セクションコンテンツ */}
+                {isOpen && (
+                  <div className="flex-1 overflow-hidden">
+                    {section.content}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+
+          {/* すべて閉じているときのスペース埋め */}
+          {openPanel === null && <div className="flex-1" />}
+        </div>
+      </div>
+
+      {/* ══════════════ モバイルレイアウト (< md) ══════════════ */}
+      <div className="flex md:hidden flex-1 overflow-hidden flex-col">
+        <div className="flex-1 overflow-hidden">
+          {mobileTab === "chart" && (
+            <div className="flex flex-col h-full">
+              <div className="flex-[13] min-h-0 overflow-hidden">
+                <ChartContainer />
+              </div>
+              <div className="flex-[7] min-h-0 overflow-hidden border-t border-border">
+                <MiniWatchlist />
+              </div>
+            </div>
+          )}
+          {mobileTab === "chat"          && <ChatPanel />}
+          {mobileTab === "portfolio"     && <PortfolioPanel />}
+          {mobileTab === "institutional" && <InstitutionalPanel />}
+        </div>
+
+        {/* ボトムタブ */}
+        <div className="flex-none flex items-stretch border-t border-border bg-bg-secondary">
+          {MOBILE_TABS.map(({ key, label, icon }) => (
+            <button
+              key={key}
+              onClick={() => setMobileTab(key)}
+              className={`flex-1 flex flex-col items-center justify-center gap-0.5 py-2 text-[10px] font-semibold transition-colors ${
+                mobileTab === key ? "text-accent-blue" : "text-text-muted"
+              }`}
+            >
+              {icon}
+              <span>{label}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* モーダル */}
+      {showAlerts    && <AlertsList />}
+      {showAddSymbol && <AddSymbolModal />}
+    </div>
+  );
+}
