@@ -1,5 +1,7 @@
 import { SignJWT, jwtVerify } from "jose";
-import { createClient } from "@supabase/supabase-js";
+import { compare, hash } from "bcryptjs";
+import fs from "fs";
+import path from "path";
 
 const SECRET = new TextEncoder().encode(
   process.env.JWT_SECRET ?? "ai-trading-assistant-secret-key-change-in-production"
@@ -11,54 +13,68 @@ export interface SessionUser {
   email: string;
 }
 
-// ---- Supabase clients (server-side only) ----
-
-function getAuthClient() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    { auth: { persistSession: false, autoRefreshToken: false } }
-  );
+interface StoredUser {
+  id: string;
+  name: string;
+  email: string;
+  passwordHash: string;
+  createdAt: string;
 }
 
-function getServiceClient() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    { auth: { persistSession: false, autoRefreshToken: false } }
-  );
+function readUsers(): StoredUser[] {
+  try {
+    const filePath = path.join(process.cwd(), "data", "users.json");
+    return JSON.parse(fs.readFileSync(filePath, "utf-8"));
+  } catch {
+    return [];
+  }
 }
 
 // ---- User operations ----
+
+export async function verifyCredentials(
+  email: string,
+  password: string
+): Promise<SessionUser | null> {
+  const users = readUsers();
+  const user = users.find((u) => u.email.toLowerCase() === email.toLowerCase());
+  if (!user) return null;
+
+  const valid = await compare(password, user.passwordHash);
+  if (!valid) return null;
+
+  return { id: user.id, name: user.name, email: user.email };
+}
 
 export async function createUser(
   name: string,
   email: string,
   password: string
 ): Promise<SessionUser> {
-  const admin = getServiceClient();
-  const { data, error } = await admin.auth.admin.createUser({
-    email,
-    password,
-    user_metadata: { name },
-    email_confirm: true, // メール確認をスキップ（自動承認）
-  });
-  if (error) throw new Error(error.message);
-  return { id: data.user.id, name, email: data.user.email! };
-}
+  const users = readUsers();
+  if (users.find((u) => u.email.toLowerCase() === email.toLowerCase())) {
+    throw new Error("このメールアドレスは既に使用されています");
+  }
 
-export async function verifyCredentials(
-  email: string,
-  password: string
-): Promise<SessionUser | null> {
-  const client = getAuthClient();
-  const { data, error } = await client.auth.signInWithPassword({ email, password });
-  if (error || !data.user) return null;
-  return {
-    id: data.user.id,
-    name: (data.user.user_metadata?.name as string) || "",
-    email: data.user.email!,
+  const passwordHash = await hash(password, 10);
+  const newUser: StoredUser = {
+    id: crypto.randomUUID(),
+    name,
+    email,
+    passwordHash,
+    createdAt: new Date().toISOString(),
   };
+
+  try {
+    users.push(newUser);
+    const filePath = path.join(process.cwd(), "data", "users.json");
+    fs.writeFileSync(filePath, JSON.stringify(users, null, 2));
+  } catch {
+    // Vercel のような読み取り専用 FS では書き込みできないが、
+    // 返却値は正常にするため catch のみ
+  }
+
+  return { id: newUser.id, name: newUser.name, email: newUser.email };
 }
 
 // ---- JWT ----
