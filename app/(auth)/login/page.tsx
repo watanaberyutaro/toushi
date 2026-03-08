@@ -30,6 +30,10 @@ export default function LoginPage() {
         setError(data.error ?? "ログインに失敗しました");
         return;
       }
+      // 初回ログイン時にPWAインストールプロンプトを表示するフラグをセット
+      if (!localStorage.getItem("pwa-install-done")) {
+        localStorage.setItem("pwa-show-install", "1");
+      }
       router.push("/");
       router.refresh();
     } catch {

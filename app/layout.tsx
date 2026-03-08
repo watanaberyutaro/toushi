@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import PwaRegister from "./pwa-register";
+import PwaInstallBanner from "./pwa-install-banner";
 
 export const viewport: Viewport = {
   width: "device-width",
@@ -34,6 +35,7 @@ export default function RootLayout({
     <html lang="ja">
       <body className="bg-bg-primary text-text-primary antialiased">
         <PwaRegister />
+        <PwaInstallBanner />
         {children}
       </body>
     </html>
