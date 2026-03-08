@@ -1,10 +1,6 @@
 import { NextRequest } from "next/server";
 import OpenAI from "openai";
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
-
 const SYSTEM_PROMPT = `あなたはプロの投資・トレーディングアナリストアシスタントです。
 
 ## 回答の流れ（必ず守る）
@@ -251,6 +247,10 @@ async function fetchNews(params: {
 }
 
 export async function POST(request: NextRequest) {
+  const openai = new OpenAI({
+    apiKey: process.env.OPENAI_API_KEY,
+  });
+
   const body = await request.json();
   const { message, history = [], chartContext } = body;
 
